@@ -2,9 +2,36 @@
     let siteDataCache = {};
 
     $(document).ready(function() {
+        // Initialer Status-Check
         $('.site-row').each(function() { loadSiteStatus($(this).data('id')); });
 
-        // 1. INLINE DETAILS (Updates)
+        // ONE-CLICK LOGIN (SSO)
+        $(document).on('click', '.btn-sso-login', function(e) {
+            e.preventDefault();
+            const id = $(this).data('id');
+            const link = $(this);
+            const originalText = link.text();
+
+            link.text('⏳...').css('pointer-events', 'none');
+
+            $.post(wpmmData.ajax_url, {
+                action: 'wpmm_get_login_url',
+                nonce: wpmmData.nonce,
+                id: id
+            }, function(response) {
+                link.text(originalText).css('pointer-events', 'auto');
+                if (response.success && response.data.login_url) {
+                    window.open(response.data.login_url, '_blank');
+                } else {
+                    alert('Fehler: ' + (response.data.message || 'Login-URL konnte nicht abgerufen werden.'));
+                }
+            }).fail(function() {
+                alert('Server-Fehler beim Login-Versuch.');
+                link.text(originalText).css('pointer-events', 'auto');
+            });
+        });
+
+        // DETAILS TOGGLE (Inline Updates)
         $(document).on('click', '.btn-toggle-details', function(e) {
             e.preventDefault();
             const id = $(this).data('id');
@@ -17,7 +44,11 @@
             }
         });
 
-        // 2. MODAL ÖFFNEN (Meta Daten)
+        $(document).on('click', '.btn-close-details', function() {
+            $('#details-row-' + $(this).data('id')).hide();
+        });
+
+        // MODAL SETTINGS
         $(document).on('click', '.btn-edit-site-meta', function(e) {
             e.preventDefault();
             $('#edit-site-id').val($(this).data('id'));
@@ -28,23 +59,19 @@
 
         $('.close-edit-modal').on('click', function() { $('.wpmm-modal').fadeOut(200); });
 
-        // Meta Speichern (im Modal)
         $('#edit-site-form').on('submit', function(e) {
             e.preventDefault();
-            const id = $('#edit-site-id').val();
-            const name = $('#edit-site-name').val();
-            const url = $('#edit-site-url').val();
-            
             $.post(wpmmData.ajax_url, {
                 action: 'wpmm_update_site',
                 nonce: wpmmData.nonce,
-                id: id, name: name, url: url
+                id: $('#edit-site-id').val(),
+                name: $('#edit-site-name').val(),
+                url: $('#edit-site-url').val()
             }, function() { location.reload(); });
         });
 
-        // Seite löschen (im Modal)
         $(document).on('click', '.btn-delete-site', function() {
-            if (confirm('Seite wirklich löschen?')) {
+            if (confirm('Diese Seite wirklich löschen?')) {
                 $.post(wpmmData.ajax_url, {
                     action: 'wpmm_delete_site',
                     nonce: wpmmData.nonce,
@@ -53,11 +80,11 @@
             }
         });
 
-        // Bulk Updates (Inline)
+        // BULK UPDATES
         $(document).on('click', '.btn-run-bulk-update', function() {
             const id = $(this).data('id');
             const items = $('#update-container-' + id).find('input:checked');
-            if (items.length > 0 && confirm('Updates jetzt durchführen?')) processBulkUpdate(id, items);
+            if (items.length > 0 && confirm('Ausgewählte Updates jetzt durchführen?')) processBulkUpdate(id, items);
         });
     });
 
