@@ -2,7 +2,7 @@
 /*
 Plugin Name: WP Bridge Connector
 Description: Connector für WP Maintenance Monitor.
-Version: 1.0.3
+Version: 1.0.4
 */
 
 if (!defined('ABSPATH')) exit;
@@ -23,41 +23,56 @@ add_action('rest_api_init', function () {
 });
 
 function wpbc_get_status() {
-    // WICHTIG: Erforderliche WordPress-Dateien laden, damit Update-Funktionen verfügbar sind
-    if ( ! function_exists( 'get_plugin_updates' ) ) {
+    // Sicherstellen, dass die Update-Funktionen verfügbar sind
+    if (!function_exists('get_plugin_updates')) {
         require_once ABSPATH . 'wp-admin/includes/update.php';
     }
-    if ( ! function_exists( 'get_plugins' ) ) {
+    if (!function_exists('get_plugins')) {
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
     }
 
-    return [
+    // Grundlegende WordPress Update-Checks erzwingen
+    wp_update_plugins();
+    wp_update_themes();
+
+    $plugin_updates = get_plugin_updates();
+    $theme_updates = get_theme_updates();
+    
+    // Daten-Array sicher aufbauen
+    $data = [
         'version' => get_bloginfo('version'),
         'updates' => [
             'counts' => [
-                'plugins' => count(get_plugin_updates()), 
-                'themes' => count(get_theme_updates())
+                'plugins' => count($plugin_updates),
+                'themes'  => count($theme_updates)
             ],
-            'plugin_names' => array_keys(get_plugin_updates())
+            'plugin_names' => array_keys($plugin_updates),
+            'theme_names'  => array_keys($theme_updates)
         ]
     ];
+
+    return $data; // REST-API sendet dies automatisch als JSON mit success: true
 }
 
 function wpbc_get_login() {
     $admins = get_users(['role' => 'administrator', 'number' => 1]);
     if (empty($admins)) return new WP_Error('no_admin', 'Kein Admin gefunden', ['status' => 404]);
     
-    // Sicherstellen, dass random_bytes existiert (PHP 7+)
+    // Token generieren
     $token = bin2hex(openssl_random_pseudo_bytes(20));
     update_option('wpbc_sso_' . $token, $admins[0]->ID, false);
-    return ['success' => true, 'login_url' => add_query_arg('bridge_sso', $token, admin_url())];
+    
+    return [
+        'success' => true, 
+        'login_url' => add_query_arg('bridge_sso', $token, admin_url())
+    ];
 }
 
 add_action('init', function() {
-    if(isset($_GET['bridge_sso'])) {
+    if (isset($_GET['bridge_sso'])) {
         $token = sanitize_text_field($_GET['bridge_sso']);
         $user_id = get_option('wpbc_sso_' . $token);
-        if($user_id) {
+        if ($user_id) {
             wp_set_auth_cookie($user_id);
             delete_option('wpbc_sso_' . $token);
             wp_redirect(admin_url());
