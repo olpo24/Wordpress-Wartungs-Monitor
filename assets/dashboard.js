@@ -1,38 +1,62 @@
 (function($) {
     let siteDataCache = {};
+
     $(document).ready(function() {
-        $('.site-row').each(function() { loadSiteStatus($(this).data('id')); });
-
-        $('#add-site-form').on('submit', function(e) {
-            e.preventDefault();
-            $.post(wpmmData.ajax_url, {
-                action: 'wpmm_add_site',
-                nonce: wpmmData.nonce,
-                name: $('#site-name').val(),
-                url: $('#site-url').val()
-            }, function(r) {
-                if(r.success) window.location.href = 'admin.php?page=wp-maintenance-monitor-settings&wpmm_added=1&api_key=' + r.data.api_key;
-            });
+        // Initialer Status-Check
+        $('.site-row').each(function() {
+            loadSiteStatus($(this).data('id'));
         });
 
-        $(document).on('click', '.btn-sso-login', function(e) {
-            e.preventDefault();
-            const id = $(this).data('id');
-            const link = $(this);
-            link.text('⏳...');
-            $.post(wpmmData.ajax_url, { action: 'wpmm_get_login_url', nonce: wpmmData.nonce, id: id }, function(r) {
-                link.text('Login');
-                if(r.success) window.open(r.data.login_url, '_blank');
-            });
-        });
-
+        // Toggle Details-Bereich
         $(document).on('click', '.btn-toggle-details', function(e) {
             e.preventDefault();
             const id = $(this).data('id');
-            $('#details-row-' + id).toggle();
-            if($('#details-row-' + id).is(':visible')) renderUpdateLists(id);
+            const row = $(`#details-row-${id}`);
+            row.toggle();
+            if(row.is(':visible')) renderUpdateLists(id);
         });
 
+        // SSO Login
+        $(document).on('click', '.btn-sso-login', function(e) {
+            e.preventDefault();
+            const btn = $(this);
+            const id = btn.data('id');
+            btn.text('⏳...');
+            $.post(wpmmData.ajax_url, { action: 'wpmm_get_login_url', nonce: wpmmData.nonce, id: id }, function(r) {
+                btn.text('Login');
+                if(r.success && r.data.login_url) {
+                    window.open(r.data.login_url, '_blank');
+                }
+            });
+        });
+
+        // Update ausführen (Core, Plugin oder Theme)
+        $(document).on('click', '.btn-run-update', function() {
+            const btn = $(this);
+            const id = btn.data('id');
+            const type = btn.data('type');
+            const slug = btn.data('slug');
+
+            btn.prop('disabled', true).text('⏳ Update läuft...');
+
+            $.post(wpmmData.ajax_url, {
+                action: 'wpmm_execute_update',
+                nonce: wpmmData.nonce,
+                id: id,
+                update_type: type,
+                slug: slug
+            }, function(r) {
+                if(r.success && r.data.success) {
+                    btn.text('✅ Fertig').css('background', '#46b450');
+                    setTimeout(() => loadSiteStatus(id), 3000);
+                } else {
+                    btn.text('❌ Fehler').prop('disabled', false);
+                    console.error("Update fehlgeschlagen:", r);
+                }
+            });
+        });
+
+        // Modal Edit/Delete Logik
         $(document).on('click', '.btn-edit-site-meta', function(e) {
             e.preventDefault();
             $('#edit-site-id').val($(this).data('id'));
@@ -42,49 +66,74 @@
         });
 
         $('.close-edit-modal').on('click', function() { $('#edit-modal').hide(); });
+    });
 
-        $('#edit-site-form').on('submit', function(e) {
-            e.preventDefault();
-            $.post(wpmmData.ajax_url, {
-                action: 'wpmm_update_site',
-                nonce: wpmmData.nonce,
-                id: $('#edit-site-id').val(),
-                name: $('#edit-site-name').val(),
-                url: $('#edit-site-url').val()
-            }, function() { location.reload(); });
-        });
-
-        $(document).on('click', '.btn-delete-site', function() {
-            if(confirm('Seite wirklich löschen?')) {
-                $.post(wpmmData.ajax_url, { action: 'wpmm_delete_site', nonce: wpmmData.nonce, id: $('#edit-site-id').val() }, function() { location.reload(); });
+    function loadSiteStatus(id) {
+        $(`#status-${id}`).text('Wird geprüft...');
+        $.post(wpmmData.ajax_url, { action: 'wpmm_get_status', nonce: wpmmData.nonce, id: id }, function(r) {
+            if(r.success && r.data && r.data.updates) {
+                siteDataCache[id] = r.data;
+                const c = r.data.updates.counts;
+                $(`#version-${id}`).text(r.data.version || '-');
+                
+                let badgeHtml = `
+                    <span class="cluster-badge ${c.plugins > 0 ? 'has-updates' : ''}">P: ${c.plugins}</span>
+                    <span class="cluster-badge ${c.themes > 0 ? 'has-updates' : ''}">T: ${c.themes}</span>
+                `;
+                if(c.core > 0) badgeHtml += `<span class="cluster-badge has-updates" style="background:#d64e07;color:#white;">CORE</span>`;
+                
+                $(`#status-${id}`).html(badgeHtml);
+            } else {
+                $(`#status-${id}`).html('<span style="color:red;">API-Fehler</span>');
             }
         });
-    });
-
-  function loadSiteStatus(id) {
-    $.post(wpmmData.ajax_url, { action: 'wpmm_get_status', nonce: wpmmData.nonce, id: id }, function(r) {
-        // Prüfung ob r.data UND r.data.updates existieren
-        if(r.success && r.data && r.data.updates) {
-            siteDataCache[id] = r.data;
-            const c = r.data.updates.counts;
-            $(`#version-${id}`).text(r.data.version || '-');
-            $(`#status-${id}`).html(`
-                <span class="cluster-badge ${c.plugins > 0 ? 'has-updates' : ''}">P: ${c.plugins}</span>
-                <span class="cluster-badge ${c.themes > 0 ? 'has-updates' : ''}">T: ${c.themes}</span>
-            `);
-        } else {
-            $(`#status-${id}`).text("Fehlerhafte Daten");
-            console.error("Unvollständige Antwort für Seite " + id, r);
-        }
-    });
-}
+    }
 
     function renderUpdateLists(id) {
         const data = siteDataCache[id];
-        let html = '';
-        if(data && data.updates && data.updates.plugin_names) {
-            data.updates.plugin_names.forEach(p => html += `<div><input type="checkbox" value="${p}"> ${p.split('/')[0]}</div>`);
+        const container = $(`#update-container-${id}`);
+        if(!data) return;
+
+        let html = '<div class="wpmm-details-grid">';
+
+        // 1. WordPress Core
+        if(data.updates.counts.core > 0) {
+            html += `
+                <div class="update-section core-box">
+                    <h4>WordPress Core</h4>
+                    <p>Ein neues WordPress-Update ist verfügbar.</p>
+                    <button class="button button-primary btn-run-update" data-id="${id}" data-type="core">WordPress jetzt aktualisieren</button>
+                </div>`;
         }
-        $('#update-container-' + id).html(html || 'Alles aktuell');
+
+        // 2. Plugins
+        html += '<div class="update-section"><h4>Plugins</h4>';
+        if(data.updates.plugin_names.length > 0) {
+            data.updates.plugin_names.forEach(slug => {
+                const name = slug.split('/')[0].replace(/-/g, ' ');
+                html += `
+                    <div class="update-row">
+                        <span>${name}</span>
+                        <button class="button button-small btn-run-update" data-id="${id}" data-type="plugin" data-slug="${slug}">Update</button>
+                    </div>`;
+            });
+        } else { html += '<p>Alle Plugins aktuell.</p>'; }
+        html += '</div>';
+
+        // 3. Themes
+        html += '<div class="update-section"><h4>Themes</h4>';
+        if(data.updates.theme_names && data.updates.theme_names.length > 0) {
+            data.updates.theme_names.forEach(slug => {
+                html += `
+                    <div class="update-row">
+                        <span>${slug}</span>
+                        <button class="button button-small btn-run-update" data-id="${id}" data-type="theme" data-slug="${slug}">Update</button>
+                    </div>`;
+            });
+        } else { html += '<p>Alle Themes aktuell.</p>'; }
+        html += '</div></div>';
+
+        container.html(html);
     }
+
 })(jQuery);
