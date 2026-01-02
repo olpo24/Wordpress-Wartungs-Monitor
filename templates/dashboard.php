@@ -26,6 +26,7 @@
                             <strong><?= esc_html($name) ?></strong>
                             <div class="row-actions">
                                 <span class="view"><a href="<?= esc_url($url) ?>" target="_blank">Besuchen</a> | </span>
+                                <span class="login"><a href="#" class="btn-sso-login" data-id="<?= $site->id ?>">Login</a> | </span>
                                 <span class="edit"><a href="#" class="btn-edit-site-meta" data-id="<?= $site->id ?>" data-name="<?= esc_attr($name) ?>" data-url="<?= esc_attr($url) ?>">Einstellungen</a></span>
                             </div>
                         </td>
