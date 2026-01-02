@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: WP Bridge Connector
-Description: Connector für WP Maintenance Monitor.
-Version: 1.0.4
+Description: Connector für WP Maintenance Monitor (Legacy Support 6.1.x).
+Version: 1.0.5
 */
 
 if (!defined('ABSPATH')) exit;
@@ -23,42 +23,55 @@ add_action('rest_api_init', function () {
 });
 
 function wpbc_get_status() {
-    // Sicherstellen, dass die Update-Funktionen verfügbar sind
-    if (!function_exists('get_plugin_updates')) {
-        require_once ABSPATH . 'wp-admin/includes/update.php';
-    }
-    if (!function_exists('get_plugins')) {
-        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    // 1. Dateien für Update-Funktionen laden
+    require_once ABSPATH . 'wp-admin/includes/update.php';
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    require_once ABSPATH . 'wp-admin/includes/theme.php';
+
+    // 2. WordPress zwingen, den Update-Status neu zu berechnen
+    // Das ist bei älteren Versionen wie 6.1 oft nötig, damit der Cache gefüllt ist
+    if ( ! function_exists( 'get_site_transient' ) ) {
+        require_once ABSPATH . 'wp-includes/option.php';
     }
 
-    // Grundlegende WordPress Update-Checks erzwingen
-    wp_update_plugins();
-    wp_update_themes();
+    $current_plugins = get_site_transient( 'update_plugins' );
+    $current_themes = get_site_transient( 'update_themes' );
+
+    // Falls die Transients leer sind, stoßen wir einen Check an
+    if ( ! $current_plugins ) {
+        wp_update_plugins();
+        $current_plugins = get_site_transient( 'update_plugins' );
+    }
 
     $plugin_updates = get_plugin_updates();
     $theme_updates = get_theme_updates();
     
-    // Daten-Array sicher aufbauen
-    $data = [
+    // 3. Fallback-Check für WP-Core Updates
+    $core_updates = get_core_updates();
+    $has_core_update = false;
+    if ( isset($core_updates[0]->response) && $core_updates[0]->response === 'upgrade' ) {
+        $has_core_update = true;
+    }
+
+    return [
         'version' => get_bloginfo('version'),
         'updates' => [
             'counts' => [
                 'plugins' => count($plugin_updates),
-                'themes'  => count($theme_updates)
+                'themes'  => count($theme_updates),
+                'core'    => $has_core_update ? 1 : 0
             ],
             'plugin_names' => array_keys($plugin_updates),
             'theme_names'  => array_keys($theme_updates)
         ]
     ];
-
-    return $data; // REST-API sendet dies automatisch als JSON mit success: true
 }
 
 function wpbc_get_login() {
     $admins = get_users(['role' => 'administrator', 'number' => 1]);
     if (empty($admins)) return new WP_Error('no_admin', 'Kein Admin gefunden', ['status' => 404]);
     
-    // Token generieren
+    // SSO Token generieren
     $token = bin2hex(openssl_random_pseudo_bytes(20));
     update_option('wpbc_sso_' . $token, $admins[0]->ID, false);
     
