@@ -1,5 +1,5 @@
 {
-    "name": "olpo/Olpo-Wordpress-Wartungs-Monitor",
+    "name": "olpo/olpo-wordpress-wartungs-monitor",
     "description": "Wordpress Wartungs-Monitor",
     "type": "wordpress-plugin",
     "require": {
