@@ -5,36 +5,46 @@
     <hr class="wp-header-end">
 
     <?php if (empty($sites)): ?>
-        <div class="notice notice-info"><p>Keine Seiten konfiguriert.</p></div>
+        <div class="notice notice-info"><p>Keine Seiten zur Überwachung konfiguriert.</p></div>
     <?php else: ?>
-        <div class="site-grid">
-            <?php foreach ($sites as $site): 
-                // Prüft beide Varianten (name/site_name), um PHP Warnings zu verhindern
-                $name = !empty($site->name) ? $site->name : (!empty($site->site_name) ? $site->site_name : 'Unbekannt');
-                $url  = !empty($site->url) ? $site->url : (!empty($site->site_url) ? $site->site_url : '');
-            ?>
-                <div class="site-card" data-id="<?= $site->id ?>">
-                    <div class="card-header">
-                        <div>
-                            <h3><?= esc_html($name) ?></h3>
-                            <?php if ($url): ?>
-                                <a href="<?= esc_url($url) ?>" target="_blank" class="site-url"><?= esc_url($url) ?></a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="card-content">
-                        <span class="description">Status wird geladen...</span>
-                    </div>
-                    <div class="card-actions">
-                        <button class="button button-small btn-update-trigger" style="display:none;">Updates</button>
-                        <button class="button button-small btn-edit-site" 
+        <table class="wp-list-table widefat fixed striped posts" style="margin-top: 20px;">
+            <thead>
+                <tr>
+                    <th scope="col" class="manage-column column-title column-primary">Website</th>
+                    <th scope="col" class="manage-column">Versionen</th>
+                    <th scope="col" class="manage-column column-status">Updates</th>
+                    <th scope="col" class="manage-column column-actions">Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="the-list">
+                <?php foreach ($sites as $site): 
+                    $name = !empty($site->name) ? $site->name : (!empty($site->site_name) ? $site->site_name : 'Unbekannt');
+                    $url  = !empty($site->url) ? $site->url : (!empty($site->site_url) ? $site->site_url : '');
+                ?>
+                    <tr class="site-row" data-id="<?= $site->id ?>">
+                        <td class="column-title column-primary">
+                            <strong><a href="#" class="row-title btn-edit-site" 
                                 data-id="<?= $site->id ?>" 
                                 data-name="<?= esc_attr($name) ?>" 
-                                data-url="<?= esc_attr($url) ?>">Details / Löschen</button>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
+                                data-url="<?= esc_attr($url) ?>"><?= esc_html($name) ?></a></strong>
+                            <div class="row-actions">
+                                <span class="view"><a href="<?= esc_url($url) ?>" target="_blank">Website besuchen</a> | </span>
+                                <span class="edit"><a href="#" class="btn-edit-site" data-id="<?= $site->id ?>" data-name="<?= esc_attr($name) ?>" data-url="<?= esc_attr($url) ?>">Bearbeiten</a></span>
+                            </div>
+                        </td>
+                        <td id="version-<?= $site->id ?>">
+                            <span class="description">Lade...</span>
+                        </td>
+                        <td class="column-status" id="status-<?= $site->id ?>">
+                            <span class="description">Prüfe Updates...</span>
+                        </td>
+                        <td class="column-actions">
+                            <button class="button button-small btn-update-trigger" style="display:none;">Details</button>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
     <?php endif; ?>
 </div>
 
@@ -57,11 +67,9 @@
                         <td><input type="url" id="edit-site-url" class="regular-text" required></td>
                     </tr>
                 </table>
-                <div style="margin-top:20px; display:flex; justify-content: space-between; align-items: center;">
+                <div style="margin-top:20px; display:flex; justify-content: space-between;">
                     <button type="submit" class="button button-primary">Speichern</button>
-                    <button type="button" class="button btn-delete-site" style="color:#d63638; border-color:#d63638;">
-                        Diese Seite löschen
-                    </button>
+                    <button type="button" class="button btn-delete-site" style="color:#d63638; border-color:#d63638;">Löschen</button>
                 </div>
             </form>
         </div>
