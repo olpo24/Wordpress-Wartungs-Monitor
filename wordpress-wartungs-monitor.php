@@ -71,22 +71,46 @@ if (!class_exists('WP_Maintenance_Monitor')) {
         }
 
         public function handle_bridge_download() {
-            if (isset($_GET['action']) && $_GET['action'] === 'download_bridge' && isset($_GET['api_key'])) {
-                if (!current_user_can('manage_options')) return;
-                $api_key = sanitize_text_field($_GET['api_key']);
-                $template_path = plugin_dir_path(__FILE__) . 'bridge-connector-template.php';
-                if (!file_exists($template_path)) wp_die('Template Datei fehlt!');
-                
-                $content = file_get_contents($template_path);
-                $content = str_replace('YOUR_API_KEY_HERE', $api_key, $content);
-                $content = str_replace('YOUR_DASHBOARD_URL_HERE', get_site_url(), $content);
+    if (isset($_GET['action']) && $_GET['action'] === 'download_bridge' && isset($_GET['api_key'])) {
+        if (!current_user_can('manage_options')) return;
 
-                header('Content-Type: application/octet-stream');
-                header('Content-Disposition: attachment; filename="wp-bridge-connector.php"');
-                echo $content;
-                exit;
-            }
+        $api_key = sanitize_text_field($_GET['api_key']);
+        $template_path = plugin_dir_path(__FILE__) . 'bridge-connector-template.php';
+
+        if (!file_exists($template_path)) {
+            wp_die('Template-Datei bridge-connector-template.php nicht gefunden!');
         }
+
+        // Template laden und Platzhalter ersetzen
+        $content = file_get_contents($template_path);
+        $content = str_replace('YOUR_API_KEY_HERE', $api_key, $content);
+        $content = str_replace('YOUR_DASHBOARD_URL_HERE', get_site_url(), $content);
+
+        // ZIP erstellen
+        $zip = new ZipArchive();
+        $zip_name = 'wp-bridge-connector.zip';
+        $temp_file = wp_tempnam($zip_name);
+
+        if ($zip->open($temp_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+            // Die Datei innerhalb der ZIP heißt wp-bridge-connector.php
+            $zip->addFromString('wp-bridge-connector.php', $content);
+            $zip->close();
+
+            // Header für ZIP-Download
+            header('Content-Type: application/zip');
+            header('Content-Disposition: attachment; filename="' . $zip_name . '"');
+            header('Content-Length: ' . filesize($temp_file));
+            header('Pragma: no-cache');
+            header('Expires: 0');
+
+            readfile($temp_file);
+            unlink($temp_file); // Temp-Datei löschen
+            exit;
+        } else {
+            wp_die('Fehler beim Erstellen der ZIP-Datei. Stellen Sie sicher, dass die PHP ZipArchive-Erweiterung installiert ist.');
+        }
+    }
+}
 
         public function ajax_add_site() {
             check_ajax_referer('wpmm_nonce', 'nonce');
