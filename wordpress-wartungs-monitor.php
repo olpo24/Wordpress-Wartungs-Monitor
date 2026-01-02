@@ -27,15 +27,16 @@ class WP_Maintenance_Monitor {
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
         
-        // AJAX Handler für das Dashboard
-        add_action('wp_ajax_wpmm_get_status', array($this, 'ajax_get_status'));
-        add_action('wp_ajax_wpmm_update_plugin', array($this, 'ajax_update_plugin'));
-        add_action('wp_ajax_wpmm_update_theme', array($this, 'ajax_update_theme'));
-        add_action('wp_ajax_wpmm_update_core', array($this, 'ajax_update_core'));
-        add_action('wp_ajax_wpmm_add_site', array($this, 'ajax_add_site'));
-        add_action('wp_ajax_wpmm_update_site', array($this, 'ajax_update_site'));
-        add_action('wp_ajax_wpmm_delete_site', array($this, 'ajax_delete_site'));
-        add_action('wp_ajax_wpmm_get_login_url', array($this, 'ajax_get_login_url'));
+        // AJAX Handler registrieren
+        $ajax_actions = [
+            'wpmm_get_status', 'wpmm_update_plugin', 'wpmm_update_theme', 
+            'wpmm_update_core', 'wpmm_add_site', 'wpmm_update_site', 
+            'wpmm_delete_site', 'wpmm_get_login_url'
+        ];
+
+        foreach($ajax_actions as $action) {
+            add_action("wp_ajax_$action", array($this, "ajax_" . str_replace('wpmm_', '', $action)));
+        }
     }
 
     public function activate() {
@@ -82,16 +83,45 @@ class WP_Maintenance_Monitor {
         ));
     }
 
-    // AJAX: One-Click Login URL holen
+    // --- AJAX Methoden ---
+
+    public function ajax_add_site() {
+        check_ajax_referer('wpmm_nonce', 'nonce');
+        
+        $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
+        $url  = isset($_POST['url']) ? esc_url_raw($_POST['url']) : '';
+
+        if (empty($name) || empty($url)) {
+            wp_send_json_error(['message' => 'Name oder URL fehlt']);
+        }
+
+        try {
+            $api_key = bin2hex(random_bytes(16));
+        } catch (Exception $e) {
+            $api_key = md5(uniqid(rand(), true)); // Fallback falls random_bytes scheitert
+        }
+
+        global $wpdb;
+        $result = $wpdb->insert($this->table_sites, [
+            'name' => $name,
+            'url' => $url,
+            'api_key' => $api_key
+        ]);
+
+        if ($result === false) {
+            wp_send_json_error(['message' => 'Datenbankfehler: ' . $wpdb->last_error]);
+        }
+
+        wp_send_json_success(['api_key' => $api_key]);
+    }
+
     public function ajax_get_login_url() {
         check_ajax_referer('wpmm_nonce', 'nonce');
         $id = intval($_POST['id']);
         $site = $this->get_site($id);
-        
         if (!$site) wp_send_json_error(['message' => 'Seite nicht gefunden']);
 
         $response = $this->api_request($site->url, '/get-login-url', $site->api_key);
-        
         if (isset($response['success']) && $response['success']) {
             $this->log_activity($id, 'Login', 'SSO Login-Link generiert');
             wp_send_json_success(['login_url' => $response['login_url']]);
@@ -100,64 +130,37 @@ class WP_Maintenance_Monitor {
         }
     }
 
-    // AJAX: Status abrufen
     public function ajax_get_status() {
         check_ajax_referer('wpmm_nonce', 'nonce');
-        $id = intval($_POST['id']);
-        $site = $this->get_site($id);
-        
+        $site = $this->get_site(intval($_POST['id']));
         if (!$site) wp_send_json_error();
-
-        $response = $this->api_request($site->url, '/status', $site->api_key);
-        wp_send_json_success($response);
+        wp_send_json_success($this->api_request($site->url, '/status', $site->api_key));
     }
 
-    // AJAX: Update Plugin
     public function ajax_update_plugin() {
         check_ajax_referer('wpmm_nonce', 'nonce');
-        $id = intval($_POST['id']);
+        $site = $this->get_site(intval($_POST['id']));
         $item = sanitize_text_field($_POST['item']);
-        $site = $this->get_site($id);
-        
         $response = $this->api_request($site->url, '/update-plugin', $site->api_key, ['plugin' => $item]);
-        $this->log_activity($id, 'Update', "Plugin aktualisiert: $item");
+        $this->log_activity($site->id, 'Update', "Plugin: $item");
         wp_send_json_success($response);
     }
 
-    // AJAX: Update Theme
     public function ajax_update_theme() {
         check_ajax_referer('wpmm_nonce', 'nonce');
-        $id = intval($_POST['id']);
+        $site = $this->get_site(intval($_POST['id']));
         $item = sanitize_text_field($_POST['item']);
-        $site = $this->get_site($id);
-        
         $response = $this->api_request($site->url, '/update-theme', $site->api_key, ['theme' => $item]);
-        $this->log_activity($id, 'Update', "Theme aktualisiert: $item");
+        $this->log_activity($site->id, 'Update', "Theme: $item");
         wp_send_json_success($response);
     }
 
-    // AJAX: Update Core
     public function ajax_update_core() {
         check_ajax_referer('wpmm_nonce', 'nonce');
-        $id = intval($_POST['id']);
-        $site = $this->get_site($id);
-        
+        $site = $this->get_site(intval($_POST['id']));
         $response = $this->api_request($site->url, '/update-core', $site->api_key, []);
-        $this->log_activity($id, 'Update', "WP Core aktualisiert");
+        $this->log_activity($site->id, 'Update', "WP Core");
         wp_send_json_success($response);
-    }
-
-    // CRUD Operationen
-    public function ajax_add_site() {
-        check_ajax_referer('wpmm_nonce', 'nonce');
-        global $wpdb;
-        $api_key = bin2hex(random_bytes(16));
-        $wpdb->insert($this->table_sites, [
-            'name' => sanitize_text_field($_POST['name']),
-            'url' => esc_url_raw($_POST['url']),
-            'api_key' => $api_key
-        ]);
-        wp_send_json_success(['api_key' => $api_key]);
     }
 
     public function ajax_update_site() {
@@ -177,7 +180,8 @@ class WP_Maintenance_Monitor {
         wp_send_json_success();
     }
 
-    // Hilfsfunktionen
+    // --- Hilfsmethoden ---
+
     private function get_site($id) {
         global $wpdb;
         return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_sites} WHERE id = %d", $id));
@@ -185,28 +189,21 @@ class WP_Maintenance_Monitor {
 
     private function log_activity($site_id, $action, $details) {
         global $wpdb;
-        $wpdb->insert($this->table_logs, [
-            'site_id' => $site_id,
-            'action' => $action,
-            'details' => $details
-        ]);
+        $wpdb->insert($this->table_logs, ['site_id' => $site_id, 'action' => $action, 'details' => $details]);
     }
 
     private function api_request($url, $endpoint, $api_key, $post_data = null) {
         $full_url = rtrim($url, '/') . '/wp-json/bridge/v1' . $endpoint;
         $args = [
             'headers' => ['X-Bridge-Key' => $api_key, 'Content-Type' => 'application/json'],
-            'timeout' => 45,
-            'sslverify' => false
+            'timeout' => 45, 'sslverify' => false
         ];
-        
         if ($post_data !== null) {
             $args['body'] = json_encode($post_data);
             $response = wp_remote_post($full_url, $args);
         } else {
             $response = wp_remote_get($full_url, $args);
         }
-
         if (is_wp_error($response)) return ['error' => $response->get_error_message()];
         return json_decode(wp_remote_retrieve_body($response), true);
     }
