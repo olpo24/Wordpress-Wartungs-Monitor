@@ -18,28 +18,33 @@
             </thead>
             <tbody id="the-list">
                 <?php foreach ($sites as $site): 
-                    $name = !empty($site->name) ? $site->name : (!empty($site->site_name) ? $site->site_name : 'Unbekannt');
-                    $url  = !empty($site->url) ? $site->url : (!empty($site->site_url) ? $site->site_url : '');
+                    $name = !empty($site->name) ? $site->name : 'Unbekannt';
+                    $url  = !empty($site->url) ? $site->url : '';
                 ?>
-                    <tr class="site-row" data-id="<?= $site->id ?>">
+                    <tr class="site-row" id="site-row-<?= $site->id ?>" data-id="<?= $site->id ?>">
                         <td class="column-title column-primary">
-                            <strong><a href="#" class="row-title btn-edit-site" 
-                                data-id="<?= $site->id ?>" 
-                                data-name="<?= esc_attr($name) ?>" 
-                                data-url="<?= esc_attr($url) ?>"><?= esc_html($name) ?></a></strong>
+                            <strong><?= esc_html($name) ?></strong>
                             <div class="row-actions">
-                                <span class="view"><a href="<?= esc_url($url) ?>" target="_blank">Website besuchen</a> | </span>
-                                <span class="edit"><a href="#" class="btn-edit-site" data-id="<?= $site->id ?>" data-name="<?= esc_attr($name) ?>" data-url="<?= esc_attr($url) ?>">Bearbeiten</a></span>
+                                <span class="view"><a href="<?= esc_url($url) ?>" target="_blank">Besuchen</a> | </span>
+                                <span class="edit"><a href="#" class="btn-edit-site-meta" data-id="<?= $site->id ?>" data-name="<?= esc_attr($name) ?>" data-url="<?= esc_attr($url) ?>">Einstellungen</a></span>
                             </div>
                         </td>
-                        <td id="version-<?= $site->id ?>">
-                            <span class="description">Lade...</span>
-                        </td>
-                        <td class="column-status" id="status-<?= $site->id ?>">
-                            <span class="description">Prüfe Updates...</span>
-                        </td>
+                        <td class="column-versions" id="version-<?= $site->id ?>">-</td>
+                        <td class="column-status" id="status-<?= $site->id ?>">Lade...</td>
                         <td class="column-actions">
-                            <button class="button button-small btn-update-trigger" style="display:none;">Details</button>
+                            <button type="button" class="button button-small btn-toggle-details" data-id="<?= $site->id ?>">Details</button>
+                        </td>
+                    </tr>
+                    <tr id="details-row-<?= $site->id ?>" class="inline-edit-row" style="display:none;">
+                        <td colspan="4" class="colspanchange">
+                            <div class="inline-edit-wrapper">
+                                <div class="update-lists-container" id="update-container-<?= $site->id ?>">
+                                    </div>
+                                <div class="inline-edit-group">
+                                    <button class="button button-primary btn-run-bulk-update" data-id="<?= $site->id ?>">Ausgewählte aktualisieren</button>
+                                    <button class="button button-secondary btn-close-details" data-id="<?= $site->id ?>">Abbrechen</button>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -50,27 +55,15 @@
 
 <div id="edit-modal" class="wpmm-modal">
     <div class="wpmm-modal-content">
-        <div class="modal-header">
-            <h2>Seiteneinstellungen</h2>
-            <button class="close-edit-modal" style="border:none; background:none; cursor:pointer; font-size:20px;">&times;</button>
-        </div>
+        <div class="modal-header"><h2>Seiteneinstellungen</h2><button class="close-edit-modal">&times;</button></div>
         <div class="modal-body">
             <form id="edit-site-form">
                 <input type="hidden" id="edit-site-id">
                 <table class="form-table">
-                    <tr>
-                        <td><label>Name</label></td>
-                        <td><input type="text" id="edit-site-name" class="regular-text" required></td>
-                    </tr>
-                    <tr>
-                        <td><label>URL</label></td>
-                        <td><input type="url" id="edit-site-url" class="regular-text" required></td>
-                    </tr>
+                    <tr><td>Name</td><td><input type="text" id="edit-site-name" class="regular-text"></td></tr>
+                    <tr><td>URL</td><td><input type="url" id="edit-site-url" class="regular-text"></td></tr>
                 </table>
-                <div style="margin-top:20px; display:flex; justify-content: space-between;">
-                    <button type="submit" class="button button-primary">Speichern</button>
-                    <button type="button" class="button btn-delete-site" style="color:#d63638; border-color:#d63638;">Löschen</button>
-                </div>
+                <p class="submit"><button type="submit" class="button button-primary">Speichern</button></p>
             </form>
         </div>
     </div>
