@@ -1,6 +1,6 @@
 (function($) {
     $(document).ready(function() {
-        // Status für alle Karten beim Laden initialisieren
+        // Status für alle Karten initialisieren
         $('.site-card').each(function() {
             loadSiteStatus($(this).data('id'), $(this));
         });
@@ -10,7 +10,7 @@
             $('.wpmm-modal').hide();
         });
 
-        // Seite hinzufügen (AJAX & stabiler Redirect)
+        // Seite hinzufügen (AJAX mit stabilem Redirect)
         $('#add-site-form').on('submit', function(e) {
             e.preventDefault();
             const siteName = $('#site-name').val();
@@ -23,7 +23,6 @@
                 url: siteUrl
             }, function(response) {
                 if (response.success && response.data) {
-                    // Stabiler Redirect-Bau ohne White Screen Risiko
                     const baseUrl = window.location.origin + window.location.pathname;
                     const params = new URLSearchParams(window.location.search);
                     params.set('wpmm_added', '1');
@@ -34,8 +33,6 @@
                 } else {
                     alert('Fehler: ' + (response.data ? response.data.message : 'Unbekannter Fehler'));
                 }
-            }).fail(function() {
-                alert('Server-Fehler beim Hinzufügen der Seite.');
             });
         });
 
@@ -59,8 +56,6 @@
             }, function(response) {
                 if (response.success) {
                     location.reload();
-                } else {
-                    alert('Fehler beim Speichern: ' + response.data.message);
                 }
             });
         });
@@ -68,22 +63,14 @@
         // Seite löschen
         $(document).on('click', '.btn-delete-site', function(e) {
             e.preventDefault();
-            const id = $('#edit-site-id').val();
-            
-            if (confirm('Möchtest du diese Seite wirklich unwiderruflich aus dem Monitor löschen?')) {
-                const btn = $(this);
-                btn.prop('disabled', true).text('Lösche...');
-
+            if (confirm('Diese Seite wirklich löschen?')) {
                 $.post(wpmmData.ajax_url, {
                     action: 'wpmm_delete_site',
                     nonce: wpmmData.nonce,
-                    id: id
+                    id: $('#edit-site-id').val()
                 }, function(response) {
                     if (response.success) {
                         location.reload();
-                    } else {
-                        alert('Fehler: ' + response.data.message);
-                        btn.prop('disabled', false).text('Löschen');
                     }
                 });
             }
@@ -98,10 +85,19 @@
             success: function(response) {
                 if (response.success && response.data) {
                     const data = response.data;
-                    let html = `<div style="margin-bottom:8px; color:#646970; font-size:12px;">WP ${data.core_version || '??'} | PHP ${data.php_version || '??'}</div>`;
                     
-                    if (data.updates && typeof data.updates === 'object' && data.updates.total > 0) {
-                        html += `<span class="wpmm-badge updates-msg">${data.updates.total} Updates verfügbar</span>`;
+                    // Berechne Gesamtanzahl der Updates aus deiner API-Struktur
+                    let totalUpdates = 0;
+                    if (data.updates && data.updates.counts) {
+                        totalUpdates = parseInt(data.updates.counts.plugins || 0) + 
+                                       parseInt(data.updates.counts.themes || 0) + 
+                                       parseInt(data.updates.counts.core || 0);
+                    }
+                    
+                    let html = `<div style="margin-bottom:8px; color:#646970; font-size:12px;">WP ${data.version || '??'}</div>`;
+                    
+                    if (totalUpdates > 0) {
+                        html += `<span class="wpmm-badge updates-msg">${totalUpdates} Updates verfügbar</span>`;
                         card.find('.btn-update-trigger').show();
                     } else {
                         html += `<span class="wpmm-badge">System aktuell</span>`;
