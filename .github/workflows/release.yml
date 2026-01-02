@@ -1,0 +1,35 @@
+name: Build and Release Plugins
+
+on:
+  push:
+    tags:
+      - 'v*' # Wird ausgelöst, wenn du einen Tag pusht, der mit 'v' beginnt (z.B. v1.0.0)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Create OWWM Plugin Zip
+        run: |
+          # Wir gehen davon aus, dass dein Dashboard-Plugin im Ordner 'dashboard' liegt
+          zip -r owwmn.zip ./owwm -x "*.git*" ".github*"
+
+      - name: Create OWWM Child
+        run: |
+          # Wir gehen davon aus, dass dein Bridge-Plugin im Ordner 'bridge' liegt
+          zip -r owwm-child.zip ./owwm-child -x "*.git*" ".github*"
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            owwmn.zip
+            owwmn-child.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
