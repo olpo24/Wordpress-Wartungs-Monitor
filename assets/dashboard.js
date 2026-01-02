@@ -2,12 +2,12 @@
     let siteDataCache = {};
 
     $(document).ready(function() {
-        // 1. Initialer Status-Check für alle Zeilen
+        // 1. Initialer Status-Check für alle Zeilen im Dashboard
         $('.site-row').each(function() {
             loadSiteStatus($(this).data('id'));
         });
 
-        // 2. Details-Bereich auf/zu
+        // 2. Details-Bereich auf/zu klappen
         $(document).on('click', '.btn-toggle-details', function(e) {
             e.preventDefault();
             const id = $(this).data('id');
@@ -34,20 +34,21 @@
             });
         });
 
-        // 4. Bulk-Update Checkbox-Steuerung
+        // 4. Bulk-Update Checkbox-Logik (Alle auswählen)
         $(document).on('change', '.select-all-updates', function() {
             const id = $(this).data('id');
             const isChecked = $(this).is(':checked');
             $(`#update-container-${id} .update-cb`).prop('checked', isChecked).trigger('change');
         });
 
+        // Bulk-Button aktivieren/deaktivieren
         $(document).on('change', '.update-cb', function() {
             const id = $(this).data('id');
             const anyChecked = $(`#update-container-${id} .update-cb:checked`).length > 0;
             $(`#update-container-${id} .btn-run-bulk-update`).prop('disabled', !anyChecked);
         });
 
-        // 5. Sequenzielles Bulk-Update mit Progress Bar
+        // 5. Sequenzielles Bulk-Update mit 2s Pause (Cooldown)
         $(document).on('click', '.btn-run-bulk-update', async function() {
             const btn = $(this);
             const id = btn.data('id');
@@ -64,55 +65,53 @@
             progressBar.css('width', '0%').text('0%');
 
             // Queue abarbeiten
-       // Die Bulk-Update Schleife (Sequentiell mit Cooldown)
-        for (let i = 0; i < total; i++) {
-            const cb = $(selected[i]);
-            const type = cb.data('type');
-            const slug = cb.data('slug');
-            const row = cb.closest('.update-row, .core-box');
+            for (let i = 0; i < total; i++) {
+                const cb = $(selected[i]);
+                const type = cb.data('type');
+                const slug = cb.data('slug');
+                const row = cb.closest('.update-row, .core-box');
 
-            row.css('background', '#fff9e0').css('opacity', '0.7');
-            
-            try {
-                const response = await $.post(wpmmData.ajax_url, {
-                    action: 'wpmm_execute_update',
-                    nonce: wpmmData.nonce,
-                    id: id,
-                    update_type: type,
-                    slug: slug
-                });
+                row.css('background', '#fff9e0').css('opacity', '0.7');
+                
+                try {
+                    const response = await $.post(wpmmData.ajax_url, {
+                        action: 'wpmm_execute_update',
+                        nonce: wpmmData.nonce,
+                        id: id,
+                        update_type: type,
+                        slug: slug
+                    });
 
-                if (response.success && response.data && response.data.success) {
-                    row.css('background', '#e7f4e9').find('input').remove();
-                    row.find('.update-status-label').html('<span style="color:green; font-weight:bold;">✔ OK</span>');
-                } else {
-                    row.css('background', '#fbeaea').find('.update-status-label').html('<span style="color:red;">❌ Fehler</span>');
+                    if (response.success && response.data && response.data.success) {
+                        row.css('background', '#e7f4e9').find('input').remove();
+                        row.find('.update-status-label').html('<span style="color:green; font-weight:bold;">✔ OK</span>');
+                    } else {
+                        row.css('background', '#fbeaea').find('.update-status-label').html('<span style="color:red;">❌ Fehler</span>');
+                    }
+                } catch (e) {
+                    row.css('background', '#fbeaea').find('.update-status-label').text('❌ Timeout');
                 }
-            } catch (e) {
-                row.css('background', '#fbeaea');
-            }
-            
-            row.css('opacity', '1');
+                
+                row.css('opacity', '1');
 
-            // --- NEU: Cooldown Pause von 2 Sekunden ---
-            if (i < total - 1) { // Nur wenn noch ein Element folgt
-                await new Promise(resolve => setTimeout(resolve, 2000));
-            }
+                // Progress Bar aktualisieren
+                const percent = Math.round(((i + 1) / total) * 100);
+                progressBar.css('width', percent + '%').text(percent + '%');
 
-            const percent = Math.round(((i + 1) / total) * 100);
-            progressBar.css('width', percent + '%').text(percent + '%');
-        }
+                // COOLDOWN: 2 Sekunden warten, bevor das nächste Element angefragt wird (außer beim letzten)
+                if (i < total - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
 
             btn.text('Abgeschlossen');
-            
-            // Nach Abschluss Status der Seite im Hintergrund neu laden
             setTimeout(() => {
                 loadSiteStatus(id);
                 progressBarContainer.fadeOut();
             }, 3000);
         });
 
-        // 6. Modal Logik (Bearbeiten/Löschen)
+        // 6. Modal Logik (Edit/Delete)
         $(document).on('click', '.btn-edit-site-meta', function(e) {
             e.preventDefault();
             $('#edit-site-id').val($(this).data('id'));
@@ -126,22 +125,18 @@
         $(document).on('click', '.btn-delete-site', function(e) {
             e.preventDefault();
             const id = $('#edit-site-id').val();
-            if (confirm('Möchtest du diese Website wirklich unwiderruflich löschen?')) {
-                $.post(wpmmData.ajax_url, { 
-                    action: 'wpmm_delete_site', 
-                    nonce: wpmmData.nonce, 
-                    id: id 
-                }, function() {
+            if (confirm('Website wirklich löschen?')) {
+                $.post(wpmmData.ajax_url, { action: 'wpmm_delete_site', nonce: wpmmData.nonce, id: id }, function() {
                     location.reload();
                 });
             }
         });
 
-        // 7. Formular für neue Seiten (AJAX-basiert)
+        // 7. Neue Seite hinzufügen via AJAX & Key Anzeige
         $('#add-site-ajax-form').on('submit', function(e) {
             e.preventDefault();
             const btn = $('#submit-site');
-            btn.prop('disabled', true).text('Registriere...');
+            btn.prop('disabled', true).text('Speichere...');
 
             $.post(wpmmData.ajax_url, {
                 action: 'wpmm_add_site',
@@ -151,51 +146,51 @@
             }, function(r) {
                 if(r.success) {
                     $('#add-site-ajax-form').slideUp();
-                    const downloadUrl = `admin.php?action=download_bridge&api_key=${r.data.api_key}`;
-                    $('#download-bridge-btn').attr('href', downloadUrl);
+                    $('#generated-api-key').val(r.data.api_key); // Key in das neue Feld schreiben
                     $('#setup-success').fadeIn();
                 } else {
-                    alert('Fehler: ' + (r.data.message || 'Unbekannter Fehler'));
+                    alert('Fehler beim Speichern.');
                     btn.prop('disabled', false).text('Seite registrieren');
                 }
             });
         });
+
+        // 8. API Key Kopier-Funktion
+        $(document).on('click', '.btn-copy-key', function() {
+            const keyField = $('#generated-api-key');
+            keyField.select();
+            document.execCommand('copy');
+            
+            const btn = $(this);
+            const originalText = btn.text();
+            btn.text('Kopiert!').css('background', '#46b450').css('color', '#fff');
+            setTimeout(() => { btn.text(originalText).css('background', '').css('color', ''); }, 2000);
+        });
     });
 
-    // Hilfsfunktion: API Status laden
+    // API Status laden
     function loadSiteStatus(id) {
         $(`#status-${id}`).html('<span style="color:#999;">...</span>');
-        $.post(wpmmData.ajax_url, { 
-            action: 'wpmm_get_status', 
-            nonce: wpmmData.nonce, 
-            id: id 
-        }, function(r) {
+        $.post(wpmmData.ajax_url, { action: 'wpmm_get_status', nonce: wpmmData.nonce, id: id }, function(r) {
             if(r.success && r.data && r.data.updates) {
                 siteDataCache[id] = r.data;
                 const c = r.data.updates.counts;
                 $(`#version-${id}`).text(r.data.version || '-');
-                
                 let badges = `<span class="cluster-badge ${c.plugins > 0 ? 'has-updates' : ''}">P: ${c.plugins}</span>`;
                 badges += `<span class="cluster-badge ${c.themes > 0 ? 'has-updates' : ''}">T: ${c.themes}</span>`;
-                
-                if(c.core > 0) {
-                    badges += `<span class="cluster-badge has-updates" style="background:#d64e07;color:#fff;border-color:#d64e07;">CORE</span>`;
-                }
+                if(c.core > 0) badges += `<span class="cluster-badge has-updates" style="background:#d64e07;color:#fff;">CORE</span>`;
                 $(`#status-${id}`).html(badges);
             } else {
-                $(`#status-${id}`).html('<span style="color:red;font-size:10px;">Offline/API Fehler</span>');
+                $(`#status-${id}`).html('<span style="color:red;font-size:10px;">Fehler</span>');
             }
         });
     }
 
-    // Hilfsfunktion: Details im Grid rendern
+    // Details Grid rendern
     function renderUpdateLists(id) {
         const data = siteDataCache[id];
         const container = $(`#update-container-${id}`);
-        if(!data) {
-            container.html('<p>Keine Daten vorhanden. Bitte lade die Seite neu.</p>');
-            return;
-        }
+        if(!data) return;
 
         let html = `
             <div class="bulk-controls">
@@ -207,48 +202,23 @@
             </div>
             <div class="wpmm-details-grid">`;
 
-        // WordPress Core
         if(data.updates.counts.core > 0) {
             html += `
                 <div class="update-section core-box">
                     <label style="cursor:pointer;"><input type="checkbox" class="update-cb" data-type="core" data-slug="core" data-id="${id}"> <strong>WordPress Core Update</strong></label>
-                    <div class="update-status-label">Update auf die neueste Version verfügbar</div>
+                    <div class="update-status-label">Update verfügbar</div>
                 </div>`;
         }
 
-        // Plugins Sektion
         html += '<div class="update-section"><h4>Plugins</h4>';
-        if(data.updates.plugin_names.length > 0) {
-            data.updates.plugin_names.forEach(slug => {
-                const displayName = slug.split('/')[0].replace(/-/g, ' ');
-                html += `
-                    <div class="update-row">
-                        <label style="cursor:pointer;"><input type="checkbox" class="update-cb" data-type="plugin" data-slug="${slug}" data-id="${id}"> ${displayName}</label>
-                        <div class="update-status-label"></div>
-                    </div>`;
-            });
-        } else {
-            html += '<p style="color:green;">✔ Plugins sind aktuell.</p>';
-        }
-        html += '</div>';
-
-        // Themes Sektion
-        html += '<div class="update-section"><h4>Themes</h4>';
-        if(data.updates.theme_names && data.updates.theme_names.length > 0) {
-            data.updates.theme_names.forEach(slug => {
-                html += `
-                    <div class="update-row">
-                        <label style="cursor:pointer;"><input type="checkbox" class="update-cb" data-type="theme" data-slug="${slug}" data-id="${id}"> ${slug}</label>
-                        <div class="update-status-label"></div>
-                    </div>`;
-            });
-        } else {
-            html += '<p style="color:green;">✔ Themes sind aktuell.</p>';
-        }
-        html += '</div>';
-
-        html += '</div>'; // Grid Ende
+        data.updates.plugin_names.forEach(slug => {
+            html += `<div class="update-row"><label style="cursor:pointer;"><input type="checkbox" class="update-cb" data-type="plugin" data-slug="${slug}" data-id="${id}"> ${slug.split('/')[0]}</label><div class="update-status-label"></div></div>`;
+        });
+        html += '</div><div class="update-section"><h4>Themes</h4>';
+        data.updates.theme_names.forEach(slug => {
+            html += `<div class="update-row"><label style="cursor:pointer;"><input type="checkbox" class="update-cb" data-type="theme" data-slug="${slug}" data-id="${id}"> ${slug}</label><div class="update-status-label"></div></div>`;
+        });
+        html += '</div></div>';
         container.html(html);
     }
-
 })(jQuery);
