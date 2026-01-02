@@ -1,54 +1,57 @@
----
 name: Build and Release Plugins
 on:
   push:
     tags:
       - v*
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Extract Version from Tag
         id: get_version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+
       - name: Update Version in PHP files
-        run: >
+        run: |
           # Ersetzt die Versionszeile in den Hauptdateien
-
-          # Sucht nach 'Version: ...' und ersetzt es durch die aktuelle Tag-Version
-
           sed -i "s/Version: .*/Version: ${{ steps.get_version.outputs.VERSION }}/g" ./owwm/olpo-wordpress-wartungs-monitor.php
-
           sed -i "s/Version: .*/Version: ${{ steps.get_version.outputs.VERSION }}/g" ./owwm-child/owwm-connector.php
+
       - name: Install Dependencies (Dashboard)
         run: |
           cd ./owwm
           composer install --no-dev --optimize-autoloader
+
       - name: Install Dependencies (Bridge)
         run: |
           cd ./owwm-child
           composer install --no-dev --optimize-autoloader
-      - name: Create OWWM Plugin Zip
-        run: >
-          # Wir gehen davon aus, dass dein Dashboard-Plugin im Ordner 'dashboard'
-          liegt
 
+      - name: Create Clean ZIPs
+        run: |
+          # Wir zippen die Ordner so, dass der Ordnername im ZIP enthalten ist.
+          # Das ist entscheidend für WordPress!
           zip -r owwm.zip ./owwm -x "*.git*" ".github*"
-      - name: Create OWWM Child
-        run: >
-          # Wir gehen davon aus, dass dein Bridge-Plugin im Ordner 'bridge' liegt
-
           zip -r owwm-child.zip ./owwm-child -x "*.git*" ".github*"
+
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2 # Upgrade auf v2 für bessere Stabilität
         with:
           files: |
-            owwm.zip
+            owm.zip
             owwm-child.zip
           draft: false
           prerelease: false
