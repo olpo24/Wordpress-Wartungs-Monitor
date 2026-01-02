@@ -1,21 +1,16 @@
 (function($) {
     $(document).ready(function() {
-        // Status laden
+        // Status für alle Karten initialisieren
         $('.site-card').each(function() {
             loadSiteStatus($(this).data('id'), $(this));
         });
 
-        // Modals
-        $(document).on('click', '.btn-update-trigger', function() {
-            const card = $(this).closest('.site-card');
-            openUpdateModal(card.data('id'), card.find('h3').text());
-        });
-
+        // Modal schliessen
         $(document).on('click', '.close-modal, .close-edit-modal', function() {
             $('.wpmm-modal').hide();
         });
 
-        // Add Site
+        // Seite hinzufügen Formular
         $('#add-site-form').on('submit', function(e) {
             e.preventDefault();
             const name = $('#site-name').val();
@@ -33,41 +28,46 @@
                     currentUrl.searchParams.set('api_key', response.data.api_key);
                     currentUrl.searchParams.set('site_id', response.data.site_id);
                     window.location.href = currentUrl.toString();
+                } else {
+                    alert('Fehler: ' + response.data.message);
                 }
             });
+        });
+
+        // Seite bearbeiten Modal öffnen
+        $(document).on('click', '.btn-edit-site', function() {
+            $('#edit-site-id').val($(this).data('id'));
+            $('#edit-site-name').val($(this).data('name'));
+            $('#edit-site-url').val($(this).data('url'));
+            $('#edit-modal').show();
         });
     });
 
     function loadSiteStatus(id, card) {
-        const statusDiv = card.find('.card-content');
+        const content = card.find('.card-content');
         $.ajax({
             url: wpmmData.ajax_url,
             data: { action: 'wpmm_get_status', nonce: wpmmData.nonce, id: id },
             success: function(response) {
-                if (response.success) {
-                    let data = response.data;
-                    let html = `<p>WP: ${data.core_version} | PHP: ${data.php_version}</p>`;
+                if (response.success && response.data) {
+                    const data = response.data;
+                    let html = `<div style="margin-bottom:8px;">WP ${data.core_version || '??'} | PHP ${data.php_version || '??'}</div>`;
                     
-                    if (data.updates.total > 0) {
-                        html += `<span class="status-badge updates-available">${data.updates.total} Updates verfügbar</span>`;
+                    // Fix: Check if updates property exists before reading .total
+                    if (data.updates && typeof data.updates.total !== 'undefined' && data.updates.total > 0) {
+                        html += `<span class="wpmm-badge updates-msg">${data.updates.total} Updates verfügbar</span>`;
                         card.find('.btn-update-trigger').show();
                     } else {
-                        html += `<span class="status-badge">Aktuell</span>`;
+                        html += `<span class="wpmm-badge">System aktuell</span>`;
                     }
-                    statusDiv.html(html);
+                    content.html(html);
                 } else {
-                    statusDiv.html('<span class="status-badge" style="color:red;">Verbindung fehlgeschlagen</span>');
+                    content.html('<span class="wpmm-badge error-msg">Verbindung fehlgeschlagen</span>');
                 }
+            },
+            error: function() {
+                content.html('<span class="wpmm-badge error-msg">Server-Fehler</span>');
             }
         });
     }
-
-    function openUpdateModal(id, name) {
-        $('#modal-site-name').text('Updates für ' + name);
-        $('#update-modal-body').html('Lade Update-Details...');
-        $('#update-modal').show();
-        
-        // Hier würde der AJAX-Call für die Details folgen (logs.php Logik)
-    }
-
 })(jQuery);
