@@ -35,7 +35,7 @@
     
     <p><strong>Nächste Schritte:</strong></p>
     <ol>
-        <li>Lade das Bridge-Plugin herunter: <a href="HIER_DEIN_STATISCHER_LINK" class="button button-small">Download Bridge-Plugin</a></li>
+        <li>Lade das Bridge-Plugin herunter: <a href="https://github.com/olpo24/Olpo-Wordpress-Wartungs-Monitor/releases/latest/download/owmm-child.zip" class="button button-small">Download Bridge-Plugin</a></li>
         <li>Installiere es auf der Zielseite.</li>
         <li>Gehe dort zu <strong>Einstellungen -> Bridge Connector</strong> und füge den oben kopierten Key ein.</li>
     </ol>
