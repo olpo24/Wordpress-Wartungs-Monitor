@@ -64,40 +64,44 @@
             progressBar.css('width', '0%').text('0%');
 
             // Queue abarbeiten
-            for (let i = 0; i < total; i++) {
-                const cb = $(selected[i]);
-                const type = cb.data('type');
-                const slug = cb.data('slug');
-                const row = cb.closest('.update-row, .core-box');
+       // Die Bulk-Update Schleife (Sequentiell mit Cooldown)
+        for (let i = 0; i < total; i++) {
+            const cb = $(selected[i]);
+            const type = cb.data('type');
+            const slug = cb.data('slug');
+            const row = cb.closest('.update-row, .core-box');
 
-                row.css('background', '#fff9e0').css('opacity', '0.7');
-                
-                try {
-                    const response = await $.post(wpmmData.ajax_url, {
-                        action: 'wpmm_execute_update',
-                        nonce: wpmmData.nonce,
-                        id: id,
-                        update_type: type,
-                        slug: slug
-                    });
+            row.css('background', '#fff9e0').css('opacity', '0.7');
+            
+            try {
+                const response = await $.post(wpmmData.ajax_url, {
+                    action: 'wpmm_execute_update',
+                    nonce: wpmmData.nonce,
+                    id: id,
+                    update_type: type,
+                    slug: slug
+                });
 
-                    if (response.success && response.data && response.data.success) {
-                        row.css('background', '#e7f4e9').find('input').remove();
-                        row.find('.update-status-label').html('<span style="color:green; font-weight:bold;">✔ OK</span>');
-                    } else {
-                        const errorMsg = (response.data && response.data.error) ? response.data.error : 'Fehler';
-                        row.css('background', '#fbeaea').find('.update-status-label').html(`<span style="color:red;">❌ ${errorMsg}</span>`);
-                    }
-                } catch (e) {
-                    row.css('background', '#fbeaea').find('.update-status-label').text('❌ Serverfehler');
+                if (response.success && response.data && response.data.success) {
+                    row.css('background', '#e7f4e9').find('input').remove();
+                    row.find('.update-status-label').html('<span style="color:green; font-weight:bold;">✔ OK</span>');
+                } else {
+                    row.css('background', '#fbeaea').find('.update-status-label').html('<span style="color:red;">❌ Fehler</span>');
                 }
-                
-                row.css('opacity', '1');
-
-                // Progress Bar aktualisieren
-                const percent = Math.round(((i + 1) / total) * 100);
-                progressBar.css('width', percent + '%').text(percent + '%');
+            } catch (e) {
+                row.css('background', '#fbeaea');
             }
+            
+            row.css('opacity', '1');
+
+            // --- NEU: Cooldown Pause von 2 Sekunden ---
+            if (i < total - 1) { // Nur wenn noch ein Element folgt
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+
+            const percent = Math.round(((i + 1) / total) * 100);
+            progressBar.css('width', percent + '%').text(percent + '%');
+        }
 
             btn.text('Abgeschlossen');
             
