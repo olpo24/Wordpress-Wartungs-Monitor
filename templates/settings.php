@@ -3,7 +3,6 @@
     <h1>Einstellungen</h1>
 
     <?php 
-    // Parameter sicher abfangen
     $is_added = isset($_GET['wpmm_added']) && $_GET['wpmm_added'] === '1';
     $api_key  = isset($_GET['api_key']) ? sanitize_text_field($_GET['api_key']) : '';
     $site_id  = isset($_GET['site_id']) ? intval($_GET['site_id']) : 0;
@@ -11,7 +10,7 @@
     if ($is_added && !empty($api_key)): ?>
         <div class="notice notice-success is-dismissible" style="margin-top:20px;">
             <p><strong>Seite erfolgreich hinzugefügt.</strong></p>
-            <p>Kopiere diesen API-Key in das Bridge-Plugin auf der Zielseite:</p>
+            <p>API-Key für das Bridge-Plugin:</p>
             <p><code><?php echo esc_html($api_key); ?></code></p>
             <?php if ($site_id > 0): ?>
                 <p>
@@ -30,11 +29,11 @@
                 <form id="add-site-form">
                     <table class="form-table">
                         <tr>
-                            <th scope="row"><label for="site-name">Name</label></th>
+                            <th scope="row"><label for="site-name">Anzeigename</label></th>
                             <td><input type="text" id="site-name" class="regular-text" placeholder="z.B. Kundenprojekt XY" required></td>
                         </tr>
                         <tr>
-                            <th scope="row"><label for="site-url">URL</label></th>
+                            <th scope="row"><label for="site-url">Website URL</label></th>
                             <td><input type="url" id="site-url" class="regular-text" placeholder="https://..." required></td>
                         </tr>
                     </table>
