@@ -17,10 +17,22 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
     __FILE__,
     'owwm'
 );
-// 3. ZWINGEND: Nur Assets verwenden (Dies überschreibt den zipball-Link)
-$myUpdateChecker->getStrategy()->setContext('releases'); 
-// Falls 'releases' nicht reicht, versuche alternativ:
-// $myUpdateChecker->getStrategy()->useReleaseAssets();
+// 2. Der "Erzwinge-Asset" Filter
+add_filter('site_transient_update_plugins', function($transient) {
+    $plugin_slug = 'owwm/olpo-wordpress-wartungs-monitor.php'; // Pfad zu deiner Hauptdatei
+    
+    if (isset($transient->response[$plugin_slug])) {
+        // Wir holen uns die aktuelle Tag-Version vom Checker
+        $latest_version = $transient->response[$plugin_slug]->new_version;
+        
+        // Wir bauen den direkten Link zum Release-Asset von GitHub zusammen
+        // Format: .../releases/download/vX.Y.Z/owwm.zip
+        $asset_url = "https://github.com/olpo24/Olpo-Wordpress-Wartungs-Monitor/releases/download/v{$latest_version}/owwm.zip";
+        
+        $transient->response[$plugin_slug]->package = $asset_url;
+    }
+    return $transient;
+});
 
 if (!defined('ABSPATH')) exit;
 
