@@ -167,19 +167,36 @@ if (!class_exists('WP_Maintenance_Monitor')) {
             return $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table_sites} WHERE id = %d", $id));
         }
 
-        private function api_request($url, $endpoint, $api_key, $post_data = null) {
-            $full_url = rtrim($url, '/') . '/wp-json/bridge/v1' . $endpoint;
-            $args = ['headers' => ['X-Bridge-Key' => $api_key, 'Content-Type' => 'application/json'], 'timeout' => 45, 'sslverify' => false];
-            if ($post_data !== null) {
-                $args['body'] = json_encode($post_data);
-                $response = wp_remote_post($full_url, $args);
-            } else {
-                $response = wp_remote_get($full_url, $args);
-            }
-            if (is_wp_error($response)) return ['error' => $response->get_error_message()];
-            return json_decode(wp_remote_retrieve_body($response), true);
-        }
+       private function api_request($url, $endpoint, $api_key, $post_data = null) {
+    $full_url = rtrim($url, '/') . '/wp-json/bridge/v1' . $endpoint;
+    
+    $args = [
+        'headers' => [
+            'X-Bridge-Key' => $api_key, 
+            'Content-Type' => 'application/json'
+        ], 
+        'timeout' => 45, 
+        'sslverify' => false
+    ];
 
+    if ($post_data !== null) {
+        $args['body'] = json_encode($post_data);
+        $response = wp_remote_post($full_url, $args);
+    } else {
+        $response = wp_remote_get($full_url, $args);
+    }
+
+    if (is_wp_error($response)) {
+        return ['error' => 'Verbindung fehlgeschlagen: ' . $response->get_error_message()];
+    }
+
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code === 404) {
+        return ['error' => 'REST-API nicht gefunden (Permalinks prüfen!)'];
+    }
+
+    return json_decode(wp_remote_retrieve_body($response), true);
+}
         public function render_dashboard() {
             global $wpdb;
             $sites = $wpdb->get_results("SELECT * FROM {$this->table_sites} ORDER BY name ASC");
