@@ -2,53 +2,68 @@
     let siteDataCache = {};
 
     $(document).ready(function() {
-        // Initialer Status-Check
-        $('.site-row').each(function() { loadSiteStatus($(this).data('id')); });
+        console.log("WPMM Dashboard initialized");
 
-        // ONE-CLICK LOGIN (SSO)
+        // --- SEITE HINZUFÜGEN (Settings Page) ---
+        $('#add-site-form').on('submit', function(e) {
+            e.preventDefault(); // VERHINDERT DIE WEISSE SEITE
+            console.log("Add Site Form submitted");
+
+            const submitBtn = $(this).find('input[type="submit"]');
+            submitBtn.val('Speichert...').prop('disabled', true);
+
+            $.ajax({
+                url: wpmmData.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'wpmm_add_site',
+                    nonce: wpmmData.nonce,
+                    name: $('#site-name').val(),
+                    url: $('#site-url').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Redirect zum Dashboard mit Erfolgsmeldung
+                        const redirectUrl = 'admin.php?page=wp-maintenance-monitor-settings&wpmm_added=1&api_key=' + 
+                                          response.data.api_key;
+                        window.location.href = redirectUrl;
+                    } else {
+                        alert('Fehler: ' + (response.data.message || 'Unbekannter Fehler'));
+                        submitBtn.val('Seite registrieren').prop('disabled', false);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error("AJAX Error:", textStatus, errorThrown);
+                    alert('Verbindungsfehler zum Server.');
+                    submitBtn.val('Seite registrieren').prop('disabled', false);
+                }
+            });
+        });
+
+        // --- DASHBOARD LOGIK ---
+        $('.site-row').each(function() { 
+            loadSiteStatus($(this).data('id')); 
+        });
+
         $(document).on('click', '.btn-sso-login', function(e) {
             e.preventDefault();
             const id = $(this).data('id');
             const link = $(this);
-            const originalText = link.text();
-
-            link.text('⏳...').css('pointer-events', 'none');
-
-            $.post(wpmmData.ajax_url, {
-                action: 'wpmm_get_login_url',
-                nonce: wpmmData.nonce,
-                id: id
-            }, function(response) {
-                link.text(originalText).css('pointer-events', 'auto');
-                if (response.success && response.data.login_url) {
-                    window.open(response.data.login_url, '_blank');
-                } else {
-                    alert('Fehler: ' + (response.data.message || 'Login-URL konnte nicht abgerufen werden.'));
-                }
-            }).fail(function() {
-                alert('Server-Fehler beim Login-Versuch.');
-                link.text(originalText).css('pointer-events', 'auto');
+            link.text('⏳...');
+            $.post(wpmmData.ajax_url, { action: 'wpmm_get_login_url', nonce: wpmmData.nonce, id: id }, function(response) {
+                link.text('Login');
+                if (response.success) window.open(response.data.login_url, '_blank');
+                else alert(response.data.message);
             });
         });
 
-        // DETAILS TOGGLE (Inline Updates)
         $(document).on('click', '.btn-toggle-details', function(e) {
             e.preventDefault();
             const id = $(this).data('id');
-            const row = $('#details-row-' + id);
-            if (row.is(':visible')) {
-                row.hide();
-            } else {
-                renderUpdateLists(id);
-                row.show();
-            }
+            $('#details-row-' + id).toggle();
+            if ($('#details-row-' + id).is(':visible')) renderUpdateLists(id);
         });
 
-        $(document).on('click', '.btn-close-details', function() {
-            $('#details-row-' + $(this).data('id')).hide();
-        });
-
-        // MODAL SETTINGS
         $(document).on('click', '.btn-edit-site-meta', function(e) {
             e.preventDefault();
             $('#edit-site-id').val($(this).data('id'));
@@ -71,20 +86,15 @@
         });
 
         $(document).on('click', '.btn-delete-site', function() {
-            if (confirm('Diese Seite wirklich löschen?')) {
-                $.post(wpmmData.ajax_url, {
-                    action: 'wpmm_delete_site',
-                    nonce: wpmmData.nonce,
-                    id: $('#edit-site-id').val()
-                }, function() { location.reload(); });
+            if (confirm('Seite wirklich löschen?')) {
+                $.post(wpmmData.ajax_url, { action: 'wpmm_delete_site', nonce: wpmmData.nonce, id: $('#edit-site-id').val() }, function() { location.reload(); });
             }
         });
 
-        // BULK UPDATES
         $(document).on('click', '.btn-run-bulk-update', function() {
             const id = $(this).data('id');
             const items = $('#update-container-' + id).find('input:checked');
-            if (items.length > 0 && confirm('Ausgewählte Updates jetzt durchführen?')) processBulkUpdate(id, items);
+            if (items.length > 0 && confirm('Updates jetzt durchführen?')) processBulkUpdate(id, items);
         });
     });
 
