@@ -4,9 +4,9 @@
 
     <?php if (isset($_GET['wpmm_added'])): ?>
         <div class="notice notice-success is-dismissible">
-            <p><strong>Seite hinzugefügt.</strong></p>
+            <p><strong>Seite erfolgreich hinzugefügt.</strong></p>
             <p>API-Key: <code><?= esc_html($_GET['api_key']) ?></code></p>
-            <p><a href="<?= admin_url('admin-ajax.php?action=wpmm_download_bridge&id=' . intval($_GET['site_id'])) ?>" class="button button-secondary">Bridge-Plugin laden</a></p>
+            <p><a href="<?= admin_url('admin-ajax.php?action=wpmm_download_bridge&id=' . intval($_GET['site_id'])) ?>" class="button button-secondary">Bridge-Plugin (ZIP) herunterladen</a></p>
         </div>
     <?php endif; ?>
 
@@ -18,11 +18,11 @@
                     <table class="form-table">
                         <tr>
                             <th scope="row"><label for="site-name">Name</label></th>
-                            <td><input type="text" id="site-name" class="regular-text" required></td>
+                            <td><input type="text" id="site-name" class="regular-text" placeholder="z.B. Kundenprojekt XY" required></td>
                         </tr>
                         <tr>
                             <th scope="row"><label for="site-url">URL</label></th>
-                            <td><input type="url" id="site-url" class="regular-text" placeholder="https://" required></td>
+                            <td><input type="url" id="site-url" class="regular-text" placeholder="https://beispiel.de" required></td>
                         </tr>
                     </table>
                     <p class="submit">
