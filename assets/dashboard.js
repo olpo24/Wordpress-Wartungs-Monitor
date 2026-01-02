@@ -213,21 +213,24 @@
     }
     
     function addSite() {
-        const name = $('#site-name').val();
-        const url = $('#site-url').val();
-        
-        $.post(wpmmData.ajax_url, {
-            action: 'wpmm_add_site',
-            nonce: wpmmData.nonce,
-            name: name,
-            url: url
-        }, function(response) {
-            if (response.success) {
-                alert('API Key: ' + response.data.api_key);
-                location.reload();
-            }
-        });
-    }
+    const name = $('#site-name').val();
+    const url = $('#site-url').val();
+    
+    $.post(wpmmData.ajax_url, {
+        action: 'wpmm_add_site',
+        nonce: wpmmData.nonce,
+        name: name,
+        url: url
+    }, function(response) {
+        if (response.success) {
+            // Seite neu laden, damit die PHP-Erfolgsmeldung 
+            // aus der Session/URL angezeigt wird
+            location.reload();
+        } else {
+            alert('Fehler beim Hinzufügen: ' + (response.data.message || 'Unbekannter Fehler'));
+        }
+    });
+}
     
     function clearLogs() {
         $.post(wpmmData.ajax_url, {
