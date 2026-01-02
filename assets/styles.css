@@ -30,3 +30,11 @@
 
 /* States */
 .wpmm-loading { opacity: 0.5; pointer-events: none; }
+
+.inline-edit-row { background: #f6f7f7; }
+.inline-edit-wrapper { padding: 15px; border-left: 4px solid #2271b1; }
+.cluster-badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; background: #eee; border: 1px solid #ccc; margin-right: 4px; }
+.cluster-badge.has-updates { background: #fcf9e8; border-color: #d64e07; color: #d64e07; }
+.wpmm-modal { position: fixed; z-index: 100000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+.wpmm-modal-content { background: #fff; margin: 10% auto; width: 400px; padding: 20px; border-radius: 4px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
