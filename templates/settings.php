@@ -22,16 +22,24 @@
                 </p>
             </form>
 
-            <div id="setup-success" style="display:none; margin-top:20px; padding:20px; background:#fff; border-left:4px solid #46b450; box-shadow:0 1px 1px rgba(0,0,0,0.1);">
-                <h3 style="color:#46b450; margin-top:0;">✔ Seite erfolgreich registriert!</h3>
-                <p>Der API-Key wurde erstellt. Lade jetzt das vorkonfigurierte Plugin herunter:</p>
-                <div style="margin:20px 0;">
-                    <a href="#" id="download-bridge-btn" class="button button-primary button-large">
-                        <span class="dashicons dashicons-archive" style="vertical-align:middle; margin-top:4px;"></span> Bridge-Plugin (.zip) herunterladen
-                    </a>
-                </div>
-                <p class="description"><strong>Anleitung:</strong> Installiere die ZIP-Datei auf der Zielseite unter <strong>Plugins -> Installieren -> Hochladen</strong> und aktiviere sie. Danach ist die Seite im Dashboard bereit.</p>
-            </div>
+           <div id="setup-success" style="display:none; margin-top:20px; padding:20px; background:#fff; border-left:4px solid #46b450; box-shadow:0 1px 1px rgba(0,0,0,0.1);">
+    <h3 style="color:#46b450; margin-top:0;">✔ Seite erfolgreich registriert!</h3>
+    
+    <p><strong>Dein persönlicher API-Key für diese Seite:</strong></p>
+    <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <input type="text" id="generated-api-key" class="regular-text" readonly style="background:#f0f0f1; font-family:monospace; font-weight:bold;">
+        <button type="button" class="button btn-copy-key">Key kopieren</button>
+    </div>
+
+    <hr>
+    
+    <p><strong>Nächste Schritte:</strong></p>
+    <ol>
+        <li>Lade das Bridge-Plugin herunter: <a href="HIER_DEIN_STATISCHER_LINK" class="button button-small">Download Bridge-Plugin</a></li>
+        <li>Installiere es auf der Zielseite.</li>
+        <li>Gehe dort zu <strong>Einstellungen -> Bridge Connector</strong> und füge den oben kopierten Key ein.</li>
+    </ol>
+</div>
         </div>
     </div>
 </div>
