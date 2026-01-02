@@ -1,9 +1,11 @@
 <?php
 /*
 Plugin Name: WP Bridge Connector
-Description: Connector für WP Maintenance Monitor Dashboard.
-Version: 1.0.1
+Description: Connector für WP Maintenance Monitor.
+Version: 1.0.2
 */
+
+if (!defined('ABSPATH')) exit;
 
 $api_key = 'YOUR_API_KEY_HERE';
 
@@ -24,7 +26,10 @@ function wpbc_get_status() {
     return [
         'version' => get_bloginfo('version'),
         'updates' => [
-            'counts' => ['plugins' => count(get_plugin_updates()), 'themes' => count(get_theme_updates())],
+            'counts' => [
+                'plugins' => count(get_plugin_updates()), 
+                'themes' => count(get_theme_updates())
+            ],
             'plugin_names' => array_keys(get_plugin_updates())
         ]
     ];
@@ -32,6 +37,8 @@ function wpbc_get_status() {
 
 function wpbc_get_login() {
     $admins = get_users(['role' => 'administrator', 'number' => 1]);
+    if (empty($admins)) return new WP_Error('no_admin', 'Kein Admin gefunden', ['status' => 404]);
+    
     $token = bin2hex(random_bytes(20));
     update_option('wpbc_sso_' . $token, $admins[0]->ID, false);
     return ['success' => true, 'login_url' => add_query_arg('bridge_sso', $token, admin_url())];
