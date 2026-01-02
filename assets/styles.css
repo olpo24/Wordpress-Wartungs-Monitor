@@ -1,53 +1,19 @@
-/* WP Maintenance Monitor - Final Clean Native */
+/* WP Maintenance Monitor - Native List View */
 
 .wpmm-container { margin: 20px 20px 0 0; }
 
-.site-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
+/* Tabellen-Styling */
+.wp-list-table .column-status { width: 250px; }
+.wp-list-table .column-actions { width: 150px; text-align: right; }
 
-.site-card {
-    background: #fff;
-    border: 1px solid #c3c4c7;
-    box-shadow: 0 1px 1px rgba(0,0,0,.04);
-    display: flex;
-    flex-direction: column;
-}
-
-.card-header {
-    padding: 15px;
-    border-bottom: 1px solid #f0f0f1;
-}
-
-.card-header h3 {
-    margin: 0 0 5px 0;
-    font-size: 14px;
-}
-
-.site-url {
-    font-size: 11px;
-    color: #2271b1;
-    text-decoration: none;
-}
-
-.card-content {
-    padding: 15px;
-    flex-grow: 1;
-}
-
-.card-actions {
-    padding: 10px 15px;
-    background: #f6f7f7;
-    border-top: 1px solid #f0f0f1;
+/* Update-Cluster Badges */
+.update-cluster {
     display: flex;
     gap: 5px;
+    flex-wrap: wrap;
 }
 
-/* Badges */
-.wpmm-badge {
+.cluster-badge {
     display: inline-block;
     padding: 2px 8px;
     border-radius: 3px;
@@ -55,18 +21,14 @@
     background: #f0f0f1;
     color: #2c3338;
     border: 1px solid #c3c4c7;
+    white-space: nowrap;
 }
 
-.wpmm-badge.updates-msg {
+.cluster-badge.has-updates {
     background: #fcf9e8;
     border-color: #d64e07;
     color: #d64e07;
-}
-
-.wpmm-badge.error-msg {
-    background: #fcf0f1;
-    border-color: #d63638;
-    color: #d63638;
+    font-weight: 600;
 }
 
 /* Modal Styling */
