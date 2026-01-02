@@ -18,8 +18,11 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
     __FILE__,
     'owwm-child'
 );
-// WICHTIG: Diese Zeile zwingt PUC, das Asset zu nutzen statt des Source-Zips
-$myUpdateChecker->getStrategy()->setContext('release-assets');
+// 3. ZWINGEND: Nur Assets verwenden (Dies überschreibt den zipball-Link)
+$myUpdateChecker->getStrategy()->setContext('releases'); 
+// Falls 'releases' nicht reicht, versuche alternativ:
+// $myUpdateChecker->getStrategy()->useReleaseAssets();
+
 if (!defined('ABSPATH')) exit;
 
 class WP_Bridge_Connector_Static {
