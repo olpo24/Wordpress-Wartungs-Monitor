@@ -15,6 +15,45 @@ add_action('rest_api_init', function () {
         'callback' => 'wpbc_get_status',
         'permission_callback' => 'wpbc_check'
     ]);
+register_rest_route('bridge/v1', '/update', [
+    'methods' => 'POST',
+    'callback' => 'wpbc_do_update',
+    'permission_callback' => 'wpbc_check'
+]);
+
+function wpbc_do_update($request) {
+    require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/update.php';
+    
+    $params = $request->get_json_params();
+    $type = $params['type']; // plugin, theme oder core
+    $slug = $params['slug'] ?? ''; // z.B. 'contact-form-7/contact-form-7.php'
+
+    // Skin für lautlose Updates (kein HTML-Output)
+    $skin = new Automatic_Upgrader_Skin();
+
+    if ($type === 'plugin') {
+        $upgrader = new Plugin_Upgrader($skin);
+        $result = $upgrader->upgrade($slug);
+        return ['success' => $result];
+    }
+
+    if ($type === 'theme') {
+        $upgrader = new Theme_Upgrader($skin);
+        $result = $upgrader->upgrade($slug);
+        return ['success' => $result];
+    }
+
+    if ($type === 'core') {
+        $upgrader = new Core_Upgrader($skin);
+        $updates = get_core_updates();
+        $result = $upgrader->upgrade($updates[0]);
+        return ['success' => $result];
+    }
+
+    return ['success' => false, 'error' => 'Ungültiger Typ'];
+}
     register_rest_route('bridge/v1', '/get-login-url', [
         'methods' => 'GET',
         'callback' => 'wpbc_get_login',
